@@ -1,4 +1,26 @@
 
+# macOS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Screenshots and test artifacts
+*.png
+*.jpg
+*.jpeg
+screenshots/
+
+# Unwanted generated files
+auth.setup.js
+login-fresh.spec.js
+post-login.spec.js
+utils/loginHelper.js
+utils/
+
 # Playwright
 node_modules/
 /test-results/

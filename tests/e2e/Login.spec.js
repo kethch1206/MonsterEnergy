@@ -18,7 +18,7 @@ test.describe("Monster Energy Login Test", () => {
         const cookieButton = page.locator(selector);
         if (await cookieButton.isVisible({ timeout: 2000 })) {
           await cookieButton.click();
-          console.log(`✅ Clicked cookie button with selector: ${selector}`);
+          console.log(`Clicked cookie button with selector: ${selector}`);
           await page.waitForTimeout(1000);
           return true;
         }
@@ -28,15 +28,15 @@ test.describe("Monster Energy Login Test", () => {
       }
     }
 
-    console.log("ℹ️ No cookie banner found with any selector");
+    console.log("No cookie banner found with any selector");
     return false;
   }
 
   // Helper function to wait for manual input with success detection
   async function waitForManualInput(page, message, timeoutMinutes = 5) {
-    console.log(`\n🔔 ${message}`);
-    console.log(`⏰ Timeout: ${timeoutMinutes} minutes`);
-    console.log("🔄 Test will wait until you complete manual operations...\n");
+    console.log(`\n${message}`);
+    console.log(`Timeout: ${timeoutMinutes} minutes`);
+    console.log("Test will wait until you complete manual operations...\n");
 
     const timeoutMs = timeoutMinutes * 60 * 1000;
     const startTime = Date.now();
@@ -54,17 +54,15 @@ test.describe("Monster Energy Login Test", () => {
 
       if (isLoggedIn || currentUrl !== initialUrl) {
         console.log(
-          `🎉 Login detected! URL changed from ${initialUrl} to ${currentUrl}`
+          `Login detected! URL changed from ${initialUrl} to ${currentUrl}`
         );
         return true;
       }
 
-      console.log(
-        `⏱️  Waited ${elapsedSeconds} seconds... (URL: ${currentUrl})`
-      );
+      console.log(`Waited ${elapsedSeconds} seconds... (URL: ${currentUrl})`);
     }
 
-    console.log("⏰ Timeout reached, but test continues...");
+    console.log("Timeout reached, but test continues...");
     return false;
   }
 
@@ -86,7 +84,7 @@ test.describe("Monster Energy Login Test", () => {
       for (const indicator of successIndicators) {
         const element = page.locator(indicator);
         if (await element.isVisible({ timeout: 1000 })) {
-          console.log(`✅ Login success detected: ${indicator}`);
+          console.log(`Login success detected: ${indicator}`);
           return true;
         }
       }
@@ -94,9 +92,7 @@ test.describe("Monster Energy Login Test", () => {
       // Check if URL indicates success (not on login page)
       const currentUrl = page.url();
       if (!currentUrl.includes("/login") && !currentUrl.includes("auth")) {
-        console.log(
-          `✅ Login success detected: Left login page to ${currentUrl}`
-        );
+        console.log(`Login success detected: Left login page to ${currentUrl}`);
         return true;
       }
     } catch (error) {
@@ -108,7 +104,7 @@ test.describe("Monster Energy Login Test", () => {
   test("should auto-fill phone then wait for manual verification", async ({
     page,
   }) => {
-    console.log("🚀 Starting semi-automatic login test");
+    console.log("Starting semi-automatic login test");
 
     // Navigate to login page
     await page.goto(
@@ -121,7 +117,7 @@ test.describe("Monster Energy Login Test", () => {
     // Handle cookie banner at the beginning
     await handleCookieBanner(page);
 
-    console.log("🤖 Automatic part: handling phone number input");
+    console.log("Automatic part: handling phone number input");
 
     // Find phone input (more specific selector)
     const phoneInput = await page
@@ -133,7 +129,7 @@ test.describe("Monster Energy Login Test", () => {
     await phoneInput.clear();
     const phoneNumber = "6478852216"; // Modify your test phone number here
     await phoneInput.fill(phoneNumber);
-    console.log(`📱 Auto-filled phone number: ${phoneNumber}`);
+    console.log(`Auto-filled phone number: ${phoneNumber}`);
 
     // Wait a moment for validation
     await page.waitForTimeout(1000);
@@ -153,14 +149,14 @@ test.describe("Monster Energy Login Test", () => {
     await expect(submitButton).toBeEnabled({ timeout: 5000 });
 
     await submitButton.click();
-    console.log("✅ Auto-clicked login button");
+    console.log("Auto-clicked login button");
 
     // Wait for verification code input to appear
     await page.waitForTimeout(3000);
 
     console.log("\n" + "=".repeat(60));
-    console.log("👋 Now it's your turn!");
-    console.log("📝 Please do the following in the browser:");
+    console.log("Now it's your turn!");
+    console.log("Please do the following in the browser:");
     console.log("   1. Receive and check SMS verification code");
     console.log("   2. Enter verification code on the webpage");
     console.log("   3. Click confirm/verify button");
@@ -176,17 +172,17 @@ test.describe("Monster Energy Login Test", () => {
 
     // Take final screenshot
     await page.screenshot({ path: "final-login-result.png" });
-    console.log("📸 Final result screenshot captured");
-    console.log("📋 Final URL:", page.url());
+    console.log("Final result screenshot captured");
+    console.log("Final URL:", page.url());
 
     if (loginSuccess) {
-      console.log("\n🎉 Login successful detected!");
+      console.log("\nLogin successful detected!");
       // Add success assertion
       await expect(page).not.toHaveURL(/.*\/login.*/);
     } else {
-      console.log("\n⚠️  Login status unclear - manual verification completed");
+      console.log("\nLogin status unclear - manual verification completed");
     }
 
-    console.log("\n✅ Semi-automatic test completed!");
+    console.log("\nSemi-automatic test completed!");
   });
 });
