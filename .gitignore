@@ -14,6 +14,10 @@ Thumbs.db
 *.jpeg
 screenshots/
 
+# Authentication files (sensitive)
+playwright/.auth/
+playwright/.auth/*.json
+
 # Unwanted generated files
 auth.setup.js
 login-fresh.spec.js

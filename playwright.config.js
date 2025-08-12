@@ -40,9 +40,24 @@ export default defineConfig({
 
   /* Configure projects for major browsers */
   projects: [
+    // Setup project - run authentication once
+    { name: "setup", testMatch: /.*\.setup\.js/ },
+
     {
       name: "chromium",
+      use: {
+        ...devices["Desktop Chrome"],
+        // Use pre-authenticated state for logged-in tests
+        storageState: "playwright/.auth/user.json",
+      },
+      dependencies: ["setup"], // Run setup before these tests
+    },
+
+    // Project for tests that don't need authentication
+    {
+      name: "chromium-no-auth",
       use: { ...devices["Desktop Chrome"] },
+      testMatch: /.*[Ll]ogin.*\.spec\.js/, // Login tests (case insensitive)
     },
 
     // {
