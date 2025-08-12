@@ -12,7 +12,9 @@ test.describe("Post-Login Tests - Osheaga", () => {
     console.log("Testing dashboard access");
 
     // Navigate directly to dashboard or protected page
-    await page.goto("https://campaigns.monsterenergyloyalty.com/dashboard");
+    await page.goto(
+      "https://campaigns.monsterenergyloyalty.com/home?locale=en-CA"
+    );
 
     // Wait for page to load
     await page.waitForLoadState("networkidle");
@@ -31,7 +33,9 @@ test.describe("Post-Login Tests - Osheaga", () => {
     console.log("Testing session persistence across reloads");
 
     // Go to a protected page
-    await page.goto("https://campaigns.monsterenergyloyalty.com/dashboard");
+    await page.goto(
+      "https://campaigns.monsterenergyloyalty.com/home?locale=en-CA"
+    );
     await page.waitForLoadState("networkidle");
 
     const initialUrl = page.url();
