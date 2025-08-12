@@ -3,29 +3,19 @@ import { test, expect } from "@playwright/test";
 test.describe("Monster Energy Login Test", () => {
   // Helper function to handle cookie banner
   async function handleCookieBanner(page) {
-    // Try multiple selectors for cookie accept button
-    const cookieSelectors = [
-      'button:has-text("ACCEPT COOKIES")',
-      'button:has-text("Accept Cookies")',
-      'button[class*="cookie"]:has-text("Accept")',
-      'button[class*="cookie"]:has-text("ACCEPT")',
-      'button:text-is("ACCEPT COOKIES")',
-      'button:text-is("Accept Cookies")',
-    ];
+    // Single, precise selector for cookie accept button
+    const cookieSelector = 'button:has-text("ACCEPT COOKIES")';
 
-    for (const selector of cookieSelectors) {
-      try {
-        const cookieButton = page.locator(selector);
-        if (await cookieButton.isVisible({ timeout: 2000 })) {
-          await cookieButton.click();
-          console.log("Cookie button clicked");
-          await page.waitForTimeout(1000);
-          return true;
-        }
-      } catch (error) {
-        // Continue to next selector
-        continue;
+    try {
+      const cookieButton = page.locator(cookieSelector);
+      if (await cookieButton.isVisible({ timeout: 2000 })) {
+        await cookieButton.click();
+        console.log("Cookie button clicked");
+        await page.waitForTimeout(1000);
+        return true;
       }
+    } catch (error) {
+      console.log("Cookie button not found or not clickable");
     }
 
     console.log("No cookie banner found");
@@ -74,6 +64,10 @@ test.describe("Monster Energy Login Test", () => {
         'text="Profile"',
         'text="Account"',
         'text="Logout"',
+        'text="My Account"',
+        'a[href*="profile"]',
+        'a[href*="dashboard"]',
+        'button:has-text("Logout")',
         '[data-testid="user-menu"]',
         ".user-profile",
         ".dashboard",
@@ -81,7 +75,7 @@ test.describe("Monster Energy Login Test", () => {
 
       for (const indicator of successIndicators) {
         const element = page.locator(indicator);
-        if (await element.isVisible({ timeout: 1000 })) {
+        if (await element.isVisible({ timeout: 2000 })) {
           console.log(`Login success detected: ${indicator}`);
           return true;
         }
@@ -89,8 +83,15 @@ test.describe("Monster Energy Login Test", () => {
 
       // Check if URL indicates success (not on login page)
       const currentUrl = page.url();
-      if (!currentUrl.includes("/login") && !currentUrl.includes("auth")) {
-        console.log(`Login success: ${currentUrl}`);
+      if (
+        !currentUrl.includes("/login") &&
+        !currentUrl.includes("/auth") &&
+        (currentUrl.includes("/dashboard") ||
+          currentUrl.includes("/profile") ||
+          currentUrl.includes("/account") ||
+          currentUrl.includes("/campaigns"))
+      ) {
+        console.log(`Login success by URL: ${currentUrl}`);
         return true;
       }
     } catch (error) {
@@ -104,7 +105,7 @@ test.describe("Monster Energy Login Test", () => {
   }) => {
     // Set longer timeout for this test (10 minutes)
     test.setTimeout(10 * 60 * 1000);
-    
+
     console.log("Starting login test");
 
     // Navigate to login page
