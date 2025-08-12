@@ -40,24 +40,35 @@ export default defineConfig({
 
   /* Configure projects for major browsers */
   projects: [
-    // Setup project - run authentication once
-    { name: "setup", testMatch: /.*\.setup\.js/ },
-
+    // Setup project - only run when explicitly needed
     {
-      name: "chromium",
-      use: {
-        ...devices["Desktop Chrome"],
-        // Use pre-authenticated state for logged-in tests
-        storageState: "playwright/.auth/user.json",
-      },
-      dependencies: ["setup"], // Run setup before these tests
+      name: "setup",
+      testMatch: /.*\.setup\.js/,
     },
 
-    // Project for tests that don't need authentication
+    // Login tests - manual login without pre-auth
     {
-      name: "chromium-no-auth",
+      name: "login-tests",
       use: { ...devices["Desktop Chrome"] },
-      testMatch: /.*[Ll]ogin.*\.spec\.js/, // Login tests (case insensitive)
+      testMatch: ["**/e2e/*[Ll]ogin*.spec.js"],
+    },
+
+    // Protected tests - use saved authentication state
+    {
+      name: "protected-tests",
+      use: {
+        ...devices["Desktop Chrome"],
+        storageState: "playwright/.auth/user.json",
+      },
+      testMatch: ["**/e2e/*[Oo]sheaga*.spec.js"],
+    },
+
+    // All other e2e tests (除了已經在其他專案中定義的)
+    {
+      name: "other-e2e-tests",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: ["**/e2e/**/*.spec.js"],
+      testIgnore: ["**/e2e/*[Ll]ogin*.spec.js", "**/e2e/*[Oo]sheaga*.spec.js"],
     },
 
     // {

@@ -1,9 +1,7 @@
 import { test, expect } from "@playwright/test";
 
 test.describe("Monster Energy Login Test", () => {
-  // Helper function to handle cookie banner
   async function handleCookieBanner(page) {
-    // Single, precise selector for cookie accept button
     const cookieSelector = 'button:has-text("ACCEPT COOKIES")';
 
     try {
@@ -22,7 +20,6 @@ test.describe("Monster Energy Login Test", () => {
     return false;
   }
 
-  // Helper function to wait for manual input with success detection
   async function waitForManualInput(page, message, timeoutMinutes = 5) {
     console.log(message);
     console.log(`Timeout: ${timeoutMinutes} minutes`);
@@ -32,14 +29,14 @@ test.describe("Monster Energy Login Test", () => {
     const startTime = Date.now();
     const initialUrl = page.url();
 
-    // Check every 5 seconds for URL change or login success indicators
     while (Date.now() - startTime < timeoutMs) {
       await page.waitForTimeout(5000);
+
+      await handleCookieBanner(page);
 
       const currentUrl = page.url();
       const elapsedSeconds = Math.round((Date.now() - startTime) / 1000);
 
-      // Check for login success indicators
       const isLoggedIn = await checkLoginSuccess(page);
 
       if (isLoggedIn || currentUrl !== initialUrl) {
@@ -54,44 +51,55 @@ test.describe("Monster Energy Login Test", () => {
     return false;
   }
 
-  // Helper function to check if login was successful
   async function checkLoginSuccess(page) {
     try {
-      // Check for common success indicators
-      const successIndicators = [
-        'text="Welcome"',
-        'text="Dashboard"',
-        'text="Profile"',
-        'text="Account"',
-        'text="Logout"',
-        'text="My Account"',
-        'a[href*="profile"]',
-        'a[href*="dashboard"]',
-        'button:has-text("Logout")',
-        '[data-testid="user-menu"]',
-        ".user-profile",
-        ".dashboard",
+      // Use stricter success criteria - require multiple indicators
+      const primaryIndicators = [
+        'text="ENTER TAB CODE HERE"',
+        'text="PROGRAMS"',
+        'text="TABS AVAILABLE"',
       ];
 
-      for (const indicator of successIndicators) {
+      const secondaryIndicators = [
+        'input[placeholder*="ENTER TAB CODE"]',
+        'button:has-text("ENTER")',
+        'text="Explore the programs below"',
+      ];
+
+      // Check that at least 2 primary indicators are present
+      let primaryCount = 0;
+      for (const indicator of primaryIndicators) {
         const element = page.locator(indicator);
-        if (await element.isVisible({ timeout: 2000 })) {
-          console.log(`Login success detected: ${indicator}`);
-          return true;
+        if (await element.isVisible({ timeout: 1000 })) {
+          primaryCount++;
         }
       }
 
-      // Check if URL indicates success (not on login page)
+      // Check that at least 1 secondary indicator is present
+      let secondaryCount = 0;
+      for (const indicator of secondaryIndicators) {
+        const element = page.locator(indicator);
+        if (await element.isVisible({ timeout: 1000 })) {
+          secondaryCount++;
+        }
+      }
+
+      // Require both primary and secondary indicators for success
+      if (primaryCount >= 2 && secondaryCount >= 1) {
+        console.log(
+          `Login success detected: ${primaryCount} primary + ${secondaryCount} secondary indicators`
+        );
+        return true;
+      }
+
       const currentUrl = page.url();
       if (
         !currentUrl.includes("/login") &&
         !currentUrl.includes("/auth") &&
-        (currentUrl.includes("/dashboard") ||
-          currentUrl.includes("/profile") ||
-          currentUrl.includes("/account") ||
-          currentUrl.includes("/campaigns"))
+        currentUrl.includes("campaigns.monsterenergyloyalty.com") &&
+        primaryCount >= 1
       ) {
-        console.log(`Login success by URL: ${currentUrl}`);
+        console.log(`Login success by URL + indicators: ${currentUrl}`);
         return true;
       }
     } catch (error) {
@@ -100,92 +108,113 @@ test.describe("Monster Energy Login Test", () => {
 
     return false;
   }
+
+  async function verifyLoginSuccess(page) {
+    try {
+      await expect(page).not.toHaveURL(/.*\/login.*/);
+      await page.waitForLoadState("networkidle");
+
+      const possibleElements = [
+        'text="ENTER TAB CODE HERE"',
+        'text="PROGRAMS"',
+        'text="TABS AVAILABLE"',
+      ];
+
+      let foundElement = false;
+      for (const selector of possibleElements) {
+        try {
+          const element = page.locator(selector).first();
+          await element.waitFor({ timeout: 2000 });
+          console.log(`Found login indicator: ${selector}`);
+          foundElement = true;
+          break;
+        } catch (e) {
+          // Continue to next selector
+        }
+      }
+
+      if (!foundElement) {
+        console.log("No clear login indicators found, but URL check passed");
+        return true;
+      }
+
+      return true;
+    } catch (error) {
+      console.log("Login verification failed:", error.message);
+      return false;
+    }
+  }
   test("should auto-fill phone then wait for manual verification", async ({
     page,
   }) => {
-    // Set longer timeout for this test (10 minutes)
     test.setTimeout(10 * 60 * 1000);
 
-    console.log("Starting login test");
+    await test.step("Navigate to login page", async () => {
+      console.log("Starting login test");
 
-    // Navigate to login page
-    await page.goto(
-      "https://campaigns.monsterenergyloyalty.com/login?locale=en-CA"
-    );
+      await page.goto(
+        "https://campaigns.monsterenergyloyalty.com/login?locale=en-CA"
+      );
 
-    // Wait for page to load
-    await page.waitForLoadState("networkidle");
+      await page.waitForLoadState("networkidle");
+      await handleCookieBanner(page);
+    });
 
-    // Handle cookie banner at the beginning
-    await handleCookieBanner(page);
+    await test.step("Fill phone number and submit", async () => {
+      console.log("Filling phone number");
 
-    console.log("Filling phone number");
+      const phoneInput = await page
+        .locator(
+          'input[name="phone_number"][placeholder="Enter your phone number to login"]'
+        )
+        .first();
+      await expect(phoneInput).toBeVisible();
 
-    // Find phone input (more specific selector)
-    const phoneInput = await page
-      .locator('input[type="tel"], input[placeholder*="phone"], textbox')
-      .first();
-    await expect(phoneInput).toBeVisible();
+      await phoneInput.clear();
+      const phoneNumber = "6478852216";
+      await phoneInput.fill(phoneNumber);
+      console.log(`Phone number filled: ${phoneNumber}`);
 
-    // Clear and fill phone number - you can modify this number
-    await phoneInput.clear();
-    const phoneNumber = "6478852216"; // Modify your test phone number here
-    await phoneInput.fill(phoneNumber);
-    console.log(`Phone number filled: ${phoneNumber}`);
+      await page.waitForTimeout(1000);
 
-    // Wait a moment for validation
-    await page.waitForTimeout(1000);
+      await handleCookieBanner(page);
 
-    // Handle cookie banner again if it appears after input
-    await handleCookieBanner(page);
+      const submitButton = await page
+        .locator('button[type="submit"]:has-text("LOGIN")')
+        .first();
 
-    // Find submit/login button (try multiple selectors)
-    const submitButton = await page
-      .locator(
-        'button:has-text("LOGIN"), button:has-text("Login"), button[type="submit"]'
-      )
-      .first();
+      await expect(submitButton).toBeVisible();
+      await expect(submitButton).toBeEnabled({ timeout: 5000 });
 
-    // Wait for button to be enabled
-    await expect(submitButton).toBeVisible();
-    await expect(submitButton).toBeEnabled({ timeout: 5000 });
+      await submitButton.click();
+      console.log("Login button clicked");
 
-    await submitButton.click();
-    console.log("Login button clicked");
+      await page.waitForTimeout(3000);
+    });
 
-    // Wait for verification code input to appear
-    await page.waitForTimeout(3000);
+    await test.step("Wait for manual verification", async () => {
+      const loginSuccess = await waitForManualInput(
+        page,
+        "Please manually enter the verification code from SMS",
+        5
+      );
 
-    console.log("Manual verification required:");
-    console.log("1. Check SMS for verification code");
-    console.log("2. Enter code in browser");
-    console.log("3. Click confirm button");
-    console.log("4. Complete login");
+      await page.screenshot({ path: "final-login-result.png" });
 
-    // Wait for manual verification (5 minutes timeout)
-    const loginSuccess = await waitForManualInput(
-      page,
-      "Waiting for manual verification...",
-      5
-    );
+      if (loginSuccess) {
+        const verified = await verifyLoginSuccess(page);
 
-    // Take final screenshot
-    await page.screenshot({ path: "final-login-result.png" });
-    console.log("Screenshot captured");
-    console.log("Final URL:", page.url());
-
-    if (loginSuccess) {
-      console.log("Login successful");
-      // Add success assertion
-      await expect(page).not.toHaveURL(/.*\/login.*/);
-
-      // Save authentication state for other tests
-      await page.context().storageState({ path: "playwright/.auth/user.json" });
-      console.log("Authentication state saved");
-    } else {
-      console.log("Login status unclear");
-    }
-
-    console.log("Test completed");
+        if (verified) {
+          await page
+            .context()
+            .storageState({ path: "playwright/.auth/user.json" });
+          console.log("Login successful and authentication state saved");
+        } else {
+          throw new Error("Login appeared successful but verification failed");
+        }
+      } else {
+        console.log("Login status unclear");
+      }
+    });
   });
 });
