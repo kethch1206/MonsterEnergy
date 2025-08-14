@@ -22,8 +22,7 @@ playwright/.auth/*.json
 auth.setup.js
 login-fresh.spec.js
 post-login.spec.js
-utils/loginHelper.js
-utils/
+
 
 # Playwright
 node_modules/
