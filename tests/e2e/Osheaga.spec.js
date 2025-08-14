@@ -1,179 +1,82 @@
 import { test, expect } from "@playwright/test";
 
+async function ensureLoggedIn(page) {
+  await page.goto("/home?locale=en-CA");
+  await page.waitForLoadState("networkidle");
+
+  // Handle cookie banner if present
+  try {
+    await page
+      .locator('button:has-text("ACCEPT COOKIES")')
+      .click({ timeout: 2000 });
+  } catch (e) {}
+
+  if (page.url().includes("/login")) {
+    // Try to find the phone input by name only, in case placeholder is not correct
+    let phoneInput = page.locator('input[name="phone_number"]');
+    await expect(phoneInput).toBeVisible({ timeout: 5000 });
+
+    // Debug log for troubleshooting
+    const placeholder = await phoneInput.getAttribute("placeholder");
+    const value = await phoneInput.inputValue();
+    console.log("Login input placeholder:", placeholder, "value:", value);
+
+    await phoneInput.fill("6478852216");
+    const loginButton = page.locator('button[type="submit"]:has-text("LOGIN")');
+    await expect(loginButton).toBeVisible();
+    await expect(loginButton).toBeEnabled();
+    await loginButton.click();
+    await page.waitForURL((url) => !url.pathname.includes("/login"), {
+      timeout: 20000,
+    });
+  }
+}
+
 test.describe("Post-Login Tests - Osheaga", () => {
+  // These tests will automatically use the saved authentication state
+
   test.beforeEach(async ({ page }) => {
-    console.log("Setting up test with authenticated state");
+    await ensureLoggedIn(page);
   });
 
-  test("should access user dashboard when logged in", async ({ page }) => {
-    await test.step("Navigate to home page", async () => {
-      console.log("Testing dashboard access");
-      await page.goto(
-        "https://campaigns.monsterenergyloyalty.com/home?locale=en-CA"
-      );
-      await page.waitForLoadState("networkidle");
-    });
-
-    await test.step("Verify user is logged in", async () => {
-      await expect(page).not.toHaveURL(/.*\/login.*/);
-      console.log("Dashboard access successful");
-      console.log("URL:", page.url());
-    });
-
-    await test.step("Take screenshot for verification", async () => {
-      await page.screenshot({ path: "dashboard-logged-in.png" });
-    });
-  });
-
-  test("should maintain session across page reloads", async ({ page }) => {
-    await test.step("Navigate to home page and get initial URL", async () => {
-      console.log("Testing session persistence across reloads");
-      await page.goto(
-        "https://campaigns.monsterenergyloyalty.com/home?locale=en-CA"
-      );
-      await page.waitForLoadState("networkidle");
-
-      const initialUrl = page.url();
-      console.log("Initial URL:", initialUrl);
-    });
-
-    await test.step("Reload page and verify session persistence", async () => {
-      await page.reload();
-      await page.waitForLoadState("networkidle");
-
-      const afterReloadUrl = page.url();
-      console.log("URL after reload:", afterReloadUrl);
-
-      await expect(page).not.toHaveURL(/.*\/login.*/);
-      console.log("Session maintained successfully across reload");
-    });
-
-    await test.step("Take screenshot for verification", async () => {
-      await page.screenshot({ path: "after-reload.png" });
-    });
-  });
-
-  test("should click ENTER button and navigate through game introduction", async ({
+  test("should navigate to Osheaga page when clicking sidebar Osheaga button", async ({
     page,
   }) => {
-    let osheagaElement = null;
-    let programsEnterButton = null;
+    await page.goto("/home?source=sidebar&locale=en-CA");
+    await page.waitForLoadState("networkidle");
 
-    await test.step("Navigate to home page", async () => {
-      console.log("Testing ENTER button and game introduction flow");
-      await page.goto(
-        "https://campaigns.monsterenergyloyalty.com/home?locale=en-CA"
-      );
-      await page.waitForLoadState("networkidle");
-      console.log("Current URL:", page.url());
-    });
+    const osheagaBtn = page.locator(
+      'button[title="Osheaga"], button[aria-label*="Osheaga"]'
+    );
+    await expect(osheagaBtn).toBeVisible();
+    await osheagaBtn.click();
 
-    await test.step("Find Osheaga Giveaway section", async () => {
-      osheagaElement = page.locator('text="Osheaga Giveaway"').first();
+    await expect(page).toHaveURL(/osheaga|rewards/i);
+    await expect(page.locator("text=COLLECT AND REDEEM")).toBeVisible();
+  });
 
-      expect(osheagaElement).toBeTruthy();
-      expect(await osheagaElement.isVisible()).toBeTruthy();
-      console.log("Found Osheaga Giveaway section");
-    });
+  test("should increase cart number by 1 when redeeming Sullivan King", async ({
+    page,
+  }) => {
+    await page.goto("/rewards?source=sidebar&locale=en-CA");
+    await page.waitForLoadState("networkidle");
 
-    await test.step("Locate Programs ENTER button", async () => {
-      programsEnterButton = page
-        .locator(
-          'text="Osheaga Giveaway" >> xpath=ancestor::div[1] >> button:has-text("ENTER")'
-        )
-        .first();
+    // Get the current cart number
+    const cartNumberLocator = page.locator(
+      "button.items-center.justify-center.rounded-full span.text-primary"
+    );
+    await expect(cartNumberLocator).toBeVisible();
+    const beforeText = await cartNumberLocator.innerText();
+    const before = parseInt(beforeText) || 0;
 
-      expect(programsEnterButton).toBeTruthy();
-      expect(await programsEnterButton.isVisible()).toBeTruthy();
-      console.log("Found Programs ENTER button");
-    });
+    // Find the REDEEM button inside the Sullivan King card
+    const redeemButton = page
+      .locator('div:has-text("Sullivan King") button:has-text("REDEEM")')
+      .first();
+    await expect(redeemButton).toBeVisible();
+    await redeemButton.click();
 
-    await test.step("Click Programs ENTER button", async () => {
-      const isEnabled = await programsEnterButton.isEnabled();
-      console.log("Programs ENTER button enabled:", isEnabled);
-
-      await page.screenshot({ path: "before-programs-enter-click.png" });
-
-      expect(isEnabled).toBeTruthy();
-      await programsEnterButton.click();
-      console.log("Clicked Programs ENTER button");
-    });
-
-    await test.step("Wait for game introduction and verify content change", async () => {
-      await page.waitForTimeout(3000);
-      await page.waitForLoadState("networkidle");
-
-      await page.screenshot({ path: "after-programs-enter-click.png" });
-
-      const currentUrl = page.url();
-      console.log("URL after Programs ENTER click:", currentUrl);
-
-      const contentChangeIndicators = [
-        ".modal",
-        '[role="dialog"]',
-        '[class*="animate"]',
-      ];
-
-      let foundContentChange = false;
-      let foundIndicator = "";
-      for (const indicator of contentChangeIndicators) {
-        try {
-          const element = page.locator(indicator).first();
-          if (await element.isVisible({ timeout: 2000 })) {
-            console.log(`Found content change indicator: ${indicator}`);
-            foundContentChange = true;
-            foundIndicator = indicator;
-            break;
-          }
-        } catch (error) {
-          console.log(`Content change indicator ${indicator} not found`);
-        }
-      }
-
-      const pageContentAfter = await page.content();
-      console.log("Page content length after click:", pageContentAfter.length);
-
-      const newContentSelectors = [
-        '[role="dialog"]',
-        '[aria-modal="true"]',
-        ".modal",
-      ];
-
-      let foundNewContent = false;
-      for (const selector of newContentSelectors) {
-        const element = page.locator(selector);
-        if (
-          (await element.count()) > 0 &&
-          (await element.first().isVisible())
-        ) {
-          console.log(`Found new content with selector: ${selector}`);
-          foundNewContent = true;
-          break;
-        }
-      }
-
-      const navigationSuccess =
-        currentUrl !==
-          "https://campaigns.monsterenergyloyalty.com/home?locale=en-CA" ||
-        foundContentChange ||
-        foundNewContent;
-
-      if (navigationSuccess) {
-        console.log(
-          "Successfully detected content change after clicking Programs ENTER button"
-        );
-        if (foundIndicator) {
-          console.log(`Content change detected via: ${foundIndicator}`);
-        }
-      } else {
-        console.log(
-          "No obvious content change detected, but ENTER button was successfully clicked"
-        );
-        await page.screenshot({ path: "enter-clicked-no-obvious-change.png" });
-      }
-
-      expect(true).toBeTruthy();
-      console.log("Successfully navigated through Programs ENTER button flow");
-    });
+    // Check the cart number increased by 1
+    await expect(cartNumberLocator).toHaveText((before + 1).toString());
   });
 });

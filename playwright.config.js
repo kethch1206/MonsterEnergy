@@ -24,17 +24,20 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: [
-    ["list"], // Terminal 輸出
-    ["html"], // HTML 報告（不自動開啟）
+    ["list"], // Terminal output
+    ["html"], // HTML report (not auto-opened)
   ],
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
-    // baseURL: 'http://localhost:3000',
+    baseURL: "https://campaigns.monsterenergyloyalty.com",
     extraHTTPHeaders: {
       Cookie: "cookie-consent=accepted; cookie-banner=dismissed",
     },
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
+    headless: false,
+    screenshot: "only-on-failure",
+    video: "retain-on-failure",
     trace: "on-first-retry",
   },
 
@@ -43,6 +46,10 @@ export default defineConfig({
     // Setup project - only run when explicitly needed
     {
       name: "setup",
+      use: {
+        ...devices["Desktop Chrome"],
+        headless: false, // Show browser for manual operations
+      },
       testMatch: /.*\.setup\.js/,
     },
 
@@ -63,7 +70,7 @@ export default defineConfig({
       testMatch: ["**/e2e/*[Oo]sheaga*.spec.js"],
     },
 
-    // All other e2e tests (除了已經在其他專案中定義的)
+    // All other e2e tests (excluding those already defined in other projects)
     {
       name: "other-e2e-tests",
       use: { ...devices["Desktop Chrome"] },
